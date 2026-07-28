@@ -140,8 +140,7 @@ def main(config, weights, checkpoint, test, model_type):
         print(f"Using {cfg['train']['n_gpus']} GPUs with DDP and Mixed Precision")
         model = ME.MinkowskiSyncBatchNorm.convert_sync_batchnorm(model)
         trainer = Trainer(
-                    accelerator='gpu',  # Force GPU usage
-                    devices=cfg['train']['n_gpus'],
+                    gpus=cfg['train']['n_gpus'],
                     logger=tb_logger,
                     log_every_n_steps=100,
                     resume_from_checkpoint=checkpoint,
@@ -150,14 +149,13 @@ def main(config, weights, checkpoint, test, model_type):
                     check_val_every_n_epoch=1,
                     num_sanity_val_steps=0,
                     limit_val_batches=0.01,
-                    strategy='ddp',  # Use DDP strategy for multi-GPU
+                    accelerator='ddp',
                     precision=16,  # Enable mixed precision training
                     )
     else:
         print("Using single GPU with Mixed Precision")
         trainer = Trainer(
-                    accelerator='gpu',  # Force GPU usage
-                    devices=1,  # Use single GPU
+                    gpus=cfg['train']['n_gpus'],
                     logger=tb_logger,
                     log_every_n_steps=100,
                     resume_from_checkpoint=checkpoint,

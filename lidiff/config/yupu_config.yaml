@@ -5,7 +5,7 @@ experiment:
 data:
     data_dir: '/nas2/jacob/data/YUPU_data_bin'
     resolution: 0.10
-    dataloader: 'Sensat'
+    dataloader: 'YUPU'
     split: 'train'
     train: ['L_T1_619065_4846213', 'L_T1_619947_4846213', 'L_T1_619947_4847977', 'L_T2_619065_4846213', 'L_T2_619065_4847977', 'L_T2_619947_4847095', 'L_T2_620829_4846213', 'L_T1_619065_4847977', 'L_T1_619947_4847095', 'L_T1_620829_4846213']
     validation: ['L_T2_619065_4847095', 'L_T2_619947_4846213']

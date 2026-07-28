@@ -219,9 +219,11 @@ def point_set_to_sparse_normal(p_full, p_part, n_full, n_part, resolution, filen
     return [p_full, p_mean, p_std, p_part, normals, filename]
 
 def point_set_to_sparse_yupu(p_full, p_part, n_full, n_part, resolution, filename, p_mean=None, p_std=None):
-    p_part = torch.tensor(p_part)
+    p_full = _sample_to_size(p_full, n_full, 'full point cloud')
+    p_part = _sample_to_size(p_part, n_part, 'partial point cloud')
 
-    p_full = torch.tensor(p_full)
+    p_part = torch.as_tensor(p_part)
+    p_full = torch.as_tensor(p_full)
     
     # after creating the voxel coordinates we normalize the floating coordinates towards mean=0 and std=1
     p_mean = p_full.mean(axis=0) if p_mean is None else p_mean
@@ -230,16 +232,41 @@ def point_set_to_sparse_yupu(p_full, p_part, n_full, n_part, resolution, filenam
     return [p_full, p_mean, p_std, p_part, filename]
 
 def point_set_to_sparse_yupu_normal(p_full, p_part, n_full, n_part, resolution, normals, filename, p_mean=None, p_std=None):
-    
-    p_part = torch.tensor(p_part)
-    normals = torch.tensor(normals)
-    p_full = torch.tensor(p_full)
+    if len(p_part) != len(normals):
+        raise ValueError(
+            f'Partial point cloud and normals must have the same length; '
+            f'got {len(p_part)} and {len(normals)} for {filename}'
+        )
+
+    p_full = _sample_to_size(p_full, n_full, 'full point cloud')
+    part_indices = _sample_indices(len(p_part), n_part, 'partial point cloud')
+    p_part = p_part[part_indices]
+    normals = normals[part_indices]
+
+    p_part = torch.as_tensor(p_part)
+    normals = torch.as_tensor(normals)
+    p_full = torch.as_tensor(p_full)
     
     # after creating the voxel coordinates we normalize the floating coordinates towards mean=0 and std=1
     p_mean = p_full.mean(axis=0) if p_mean is None else p_mean
     p_std = p_full.std(axis=0) if p_std is None else p_std
 
     return [p_full, p_mean, p_std, p_part, normals, filename]
+
+
+def _sample_indices(current_size, target_size, name):
+    """Return indices that make a point set exactly the configured size."""
+    if current_size == 0:
+        raise ValueError(f'Cannot sample an empty {name}')
+    if target_size <= 0:
+        raise ValueError(f'Target size for {name} must be positive, got {target_size}')
+    if current_size == target_size:
+        return np.arange(current_size)
+    return np.random.choice(current_size, target_size, replace=current_size < target_size)
+
+
+def _sample_to_size(points, target_size, name):
+    return points[_sample_indices(len(points), target_size, name)]
 
 def random_sub_sampling(points, num_output, verbose=0):
     num_input = np.shape(points)[0]

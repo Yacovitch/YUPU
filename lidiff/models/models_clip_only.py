@@ -650,7 +650,7 @@ class DiffusionPoints(LightningModule):
             gt_pts = batch['pcd_full'].detach().cpu().numpy()
 
             # for inference we get the partial pcd and sample the noise around the partial
-            x_init = batch['pcd_part'].repeat(1,10,1)
+            x_init = batch['pcd_part'].repeat(1, self.hparams['data'].get('upsample_ratio', 10), 1)
             x_feats = x_init + torch.randn(x_init.shape, device=self.device)
             x_full = self.points_to_tensor(x_feats, batch['mean'], batch['std'])
             x_part = self.points_to_tensor(batch['pcd_part'], batch['mean'], batch['std'])
@@ -717,7 +717,7 @@ class DiffusionPoints(LightningModule):
 
             gt_pts = batch['pcd_full'].detach().cpu().numpy()
 
-            x_init = batch['pcd_part'].repeat(1,10,1)
+            x_init = batch['pcd_part'].repeat(1, self.hparams['data'].get('upsample_ratio', 10), 1)
             x_feats = x_init + torch.randn(x_init.shape, device=self.device)
             x_full = self.points_to_tensor(x_feats, batch['mean'], batch['std'])
             x_part = self.points_to_tensor(batch['pcd_part'], batch['mean'], batch['std'])

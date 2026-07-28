@@ -6,7 +6,7 @@ data:
     #data_dir: '/nas2/jacob/data/YUPU_data_combined_train_test_bin'
     data_dir: '/nas2/jacob/data/YUPU_data_bin'
     resolution: 0.10
-    dataloader: 'SensatNormal'
+    dataloader: 'YUPUNormal'
     split: 'train'
     #train: ['L_T1_train']
     #validation: ['L_T1_test']

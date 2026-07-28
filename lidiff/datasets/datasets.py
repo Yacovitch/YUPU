@@ -445,6 +445,7 @@ class TemporalYUPUNormalDataModule(LightningDataModule):
             resolution=self.cfg['data']['resolution'],
             num_points=self.cfg['data']['num_points'],
             max_range=self.cfg['data']['max_range'],
+            upsample_ratio=self.cfg['data'].get('upsample_ratio', 4),
         )
         loader = DataLoader(data_set, batch_size=self.cfg['train']['batch_size'], shuffle=True,
                             num_workers=self.cfg['train']['num_workers'], collate_fn=collate)
@@ -460,6 +461,7 @@ class TemporalYUPUNormalDataModule(LightningDataModule):
             resolution=self.cfg['data']['resolution'],
             num_points=self.cfg['data']['num_points'],
             max_range=self.cfg['data']['max_range'],
+            upsample_ratio=self.cfg['data'].get('upsample_ratio', 4),
         )
         loader = DataLoader(data_set, batch_size=1,
                             num_workers=self.cfg['train']['num_workers'], collate_fn=collate)
@@ -475,6 +477,7 @@ class TemporalYUPUNormalDataModule(LightningDataModule):
             resolution=self.cfg['data']['resolution'],
             num_points=self.cfg['data']['num_points'],
             max_range=self.cfg['data']['max_range'],
+            upsample_ratio=self.cfg['data'].get('upsample_ratio', 4),
         )
         loader = DataLoader(data_set, batch_size=self.cfg['train']['batch_size'],
                              num_workers=self.cfg['train']['num_workers'], collate_fn=collate)
@@ -490,4 +493,3 @@ dataloaders = {
     'YUPUGrid': TemporalYUPUGridDataModule,
     'YUPUNormal': TemporalYUPUNormalDataModule,
 }
-

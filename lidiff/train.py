@@ -11,7 +11,7 @@ import yaml
 import MinkowskiEngine as ME
 
 import lidiff.datasets.datasets as datasets
-import lidiff.models.models as models
+import lidiff.models.model_ViT as models
 
 def set_deterministic():
     np.random.seed(42)
@@ -47,7 +47,7 @@ def main(config, weights, checkpoint, test):
 
     #Load data and model
     if weights is None:
-        model = models.DiffusionPoints(cfg)
+        model = models.DiffusionPoints(cfg, config_path=config)
     else:
         if test:
             # we load the current config file just to overwrite inference parameters to try different stuff during inference
@@ -70,7 +70,7 @@ def main(config, weights, checkpoint, test):
 
             cfg = ckpt_cfg
 
-        model = models.DiffusionPoints.load_from_checkpoint(weights, hparams=cfg)
+        model = models.DiffusionPoints.load_from_checkpoint(weights, hparams=cfg, config_path=config)
         print(model.hparams)
 
     data = datasets.dataloaders[cfg['data']['dataloader']](cfg)

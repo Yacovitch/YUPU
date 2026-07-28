@@ -18,7 +18,7 @@ from diffusers import DPMSolverMultistepScheduler
 
 import sys
 
-from lidiff.models.img_feature_extractor import Extractor, Extractor_img
+from lidiff.models.img_feature_extractor import Extractor_img
 from lidiff.models.unprojection import vanilla_upprojection
 
 import matplotlib.pyplot as plt
@@ -108,15 +108,11 @@ class ImageViT(nn.Module):
         )
         self.model = ViTModel(config)
         self.model = self.model.to(device)
-        self.model.eval()
         
     def forward(self, image):
-        with torch.no_grad():
-            outputs = self.model(image)
-            # Get the last hidden state
-            features = outputs.last_hidden_state
-            # Normalize features
-            features = F.normalize(features, p=2, dim=-1)
+        outputs = self.model(image)
+        features = outputs.last_hidden_state
+        features = F.normalize(features, p=2, dim=-1)
         return features
 
 class DiffusionPoints(LightningModule):
@@ -183,7 +179,9 @@ class DiffusionPoints(LightningModule):
         
         # Initialize ViT model
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.img_extractor = ImageViT(device=device)
+        n_part = self.hparams['data']['num_points'] // self.hparams['data'].get('upsample_ratio', 10)
+        self.img_extractor = Extractor_img(device=device, n_points=n_part, config_path=config_path)
+        self.vit_model = ImageViT(device=device)
         
         self.model = minknet.MinkUNetDiffClip(in_channels=3, out_channels=self.hparams['model']['out_dim'])
 
@@ -273,24 +271,16 @@ class DiffusionPoints(LightningModule):
         else:
             img, is_seen, point_loc_in_img = self.img_extractor(pcd_part.cuda())
             
-            # Get the device of the input image
-            device = img.device
-            
-            # Process the image with ViT
-            try:
-                features = self.img_extractor(img)
-                print(f"ViT encoding successful, features device: {features.device}")
-            except Exception as e:
-                print(f"ERROR in ViT encoding: {str(e)}")
-                # Emergency fallback
-                print("Using fallback random features due to ViT failure")
-                B = img.shape[0]
-                features = torch.randn(B, 197, 768, device=img.device)  # 197 patches for 224x224 image with 32x32 patches
+            # Encode each rendered view. The first ViT token is the class token;
+            # only the 7x7 patch tokens can be projected back to image pixels.
+            features = self.vit_model(img)[:, 1:, :]
             
             # Reshape features to match the expected format
-            B, N, C = features.shape  # [B, 197, 768]
-            img_feat = features.reshape(B, 1, N, C).permute(0, 3, 1, 2)
-            img_feat = img_feat.reshape(-1, 10, N, 768)  # Adjusted for ViT's 768 features
+            B, N, C = features.shape  # [batch * 10 views, 49 patches, 768]
+            num_views = self.img_extractor.pc_views.num_views
+            if B % num_views != 0:
+                raise RuntimeError(f'ViT rendered-view batch {B} is not divisible by {num_views} views')
+            img_feat = features.reshape(-1, num_views, N, C)
             
             img_condition_emb, is_seen, point_loc = vanilla_upprojection(
                     img_feat, is_seen, point_loc_in_img, img_size=(224, 224), n_points=pcd_part.shape[1], vweights=None
@@ -340,7 +330,7 @@ class DiffusionPoints(LightningModule):
         Returns:
             ME.TensorField: MinkowskiEngine TensorField with quantized coordinates and features.
         """
-        features = features.squeeze(0)  # Shape: [num_points, 1024]
+        features = features.reshape(-1, features.shape[-1])
 
         # Convert to MinkowskiEngine batched coordinates (adds batch indices)
         coordinates = ME.utils.batched_coordinates(list(x_feats[:]), dtype=torch.float32, device=self.device)
@@ -402,11 +392,12 @@ class DiffusionPoints(LightningModule):
         self.partial_enc.eval()
         self.partial_enc_img.eval()
         self.img_extractor.eval()
+        self.vit_model.eval()
         
         with torch.no_grad():
             gt_pts = batch['pcd_full'].detach().cpu().numpy()
 
-            x_init = batch['pcd_part'].repeat(1,10,1)
+            x_init = batch['pcd_part'].repeat(1, self.hparams['data'].get('upsample_ratio', 10), 1)
             x_feats = x_init + torch.randn(x_init.shape, device=self.device)
             x_full = self.points_to_tensor(x_feats, batch['mean'], batch['std'])
             x_part = self.points_to_tensor(batch['pcd_part'], batch['mean'], batch['std'])
@@ -460,6 +451,7 @@ class DiffusionPoints(LightningModule):
         self.partial_enc.eval()
         self.partial_enc_img.eval()
         self.img_extractor.eval()
+        self.vit_model.eval()
         with torch.no_grad():
             skip, output_paths = self.valid_paths(batch['filename'])
 
@@ -469,7 +461,7 @@ class DiffusionPoints(LightningModule):
 
             gt_pts = batch['pcd_full'].detach().cpu().numpy()
 
-            x_init = batch['pcd_part'].repeat(1,10,1)
+            x_init = batch['pcd_part'].repeat(1, self.hparams['data'].get('upsample_ratio', 10), 1)
             x_feats = x_init + torch.randn(x_init.shape, device=self.device)
             x_full = self.points_to_tensor(x_feats, batch['mean'], batch['std'])
             x_part = self.points_to_tensor(batch['pcd_part'], batch['mean'], batch['std'])
@@ -525,4 +517,4 @@ class DiffusionPoints(LightningModule):
             'frequency': 5,
         }
 
-        return [optimizer], [scheduler] 
+        return [optimizer], [scheduler]

@@ -1,22 +1,25 @@
 import torch
 from torch.utils.data import Dataset
 from lidiff.utils.pcd_preprocess import point_set_to_coord_feats
-from lidiff.utils.collations import point_set_to_sparse_grid, point_set_to_sparse_yupu_normal
+from lidiff.utils.collations import point_set_to_sparse_grid_normal, point_set_to_sparse_yupu_normal
 from natsort import natsorted
 import os
 import numpy as np
+import yaml
 
 import warnings
 
 warnings.filterwarnings('ignore')
 
 class TemporalYUPUNormalSet(Dataset):
-    def __init__(self, data_dir, seqs, split, resolution, num_points, max_range, dataset_norm=False, std_axis_norm=False, grid=False):
+    def __init__(self, data_dir, seqs, split, resolution, num_points, max_range,
+                 upsample_ratio=4, dataset_norm=False, std_axis_norm=False, grid=False):
         super().__init__()
         self.data_dir = data_dir
 
         self.resolution = resolution
         self.num_points = num_points
+        self.upsample_ratio = upsample_ratio
         self.max_range = max_range
         self.grid = grid
 
@@ -109,18 +112,15 @@ class TemporalYUPUNormalSet(Dataset):
         p_full = np.fromfile(self.points_gt_datapath[index], dtype=np.float32).reshape((-1,4))[:,:3]
         normals = np.fromfile(self.normals_datapath[index], dtype=np.float32).reshape((-1,3))
 
-        # Determine partial size target from config intent: num_points/upsample_ratio
-        n_part = int(self.num_points / max(1, int(self.num_points / max(len(p_full), 1) * (len(p_part)/max(len(p_full),1)))))
-        # In practice, for provided data, return as-is; downstream collate will handle sampling to exact sizes
+        n_part = int(self.num_points / max(1, int(self.upsample_ratio)))
 
         if self.grid:
-            return point_set_to_sparse_grid(
+            return point_set_to_sparse_grid_normal(
                 p_full,
                 p_part,
                 self.num_points,
                 n_part,
                 self.resolution,
-                normals,
                 self.points_datapath[index],
                 p_mean=self.data_stats['mean'],
                 p_std=self.data_stats['std'],
@@ -140,5 +140,3 @@ class TemporalYUPUNormalSet(Dataset):
 
     def __len__(self):
         return self.nr_data
-
-

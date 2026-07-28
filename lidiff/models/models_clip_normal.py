@@ -302,7 +302,12 @@ class DiffusionPoints(LightningModule):
         except Exception:
             proj_params = None
             
-        self.img_extractor = Extractor_img(device = device, n_points = self.hparams['data']['num_points']//self.hparams['data']['upsample_ratio'], params_override=proj_params)
+        self.upsample_ratio = self.hparams['data'].get('upsample_ratio', 10)
+        self.img_extractor = Extractor_img(
+            device=device,
+            n_points=self.hparams['data']['num_points'] // self.upsample_ratio,
+            params_override=proj_params,
+        )
         
         self.modality_mixer = CrossModalMixer(embed_dim=256, num_heads=8, dropout=0.0, num_modalities=3, fuse='mean', out_dim=512)
 
@@ -449,7 +454,9 @@ class DiffusionPoints(LightningModule):
             img_feat = img_feat.reshape(-1, 10, 49, 512)
             
             img_condition_emb, is_seen, point_loc = vanilla_upprojection(
-                    img_feat, is_seen, point_loc_in_img, img_size=(224, 224), n_points=self.hparams['data']['num_points']//self.hparams['data']['upsample_ratio'], vweights=None
+                    img_feat, is_seen, point_loc_in_img, img_size=(224, 224),
+                    n_points=self.hparams['data']['num_points'] // self.upsample_ratio,
+                    vweights=None
                 )
                 
             img_feat = self.points_to_tensor_with_features(pcd_part, img_condition_emb, mean, std)
@@ -650,7 +657,7 @@ class DiffusionPoints(LightningModule):
             gt_pts = batch['pcd_full'].detach().cpu().numpy()
 
             # for inference we get the partial pcd and sample the noise around the partial
-            x_init = batch['pcd_part'].repeat(1,10,1)
+            x_init = batch['pcd_part'].repeat(1, self.hparams['data'].get('upsample_ratio', 10), 1)
             x_feats = x_init + torch.randn(x_init.shape, device=self.device)
             x_full = self.points_to_tensor(x_feats, batch['mean'], batch['std'])
             x_part = self.points_to_tensor(batch['pcd_part'], batch['mean'], batch['std'])
@@ -717,7 +724,7 @@ class DiffusionPoints(LightningModule):
 
             gt_pts = batch['pcd_full'].detach().cpu().numpy()
 
-            x_init = batch['pcd_part'].repeat(1,10,1)
+            x_init = batch['pcd_part'].repeat(1, self.hparams['data'].get('upsample_ratio', 10), 1)
             x_feats = x_init + torch.randn(x_init.shape, device=self.device)
             x_full = self.points_to_tensor(x_feats, batch['mean'], batch['std'])
             x_part = self.points_to_tensor(batch['pcd_part'], batch['mean'], batch['std'])
