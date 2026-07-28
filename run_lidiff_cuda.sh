@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=lidiff-cuda-new
+#SBATCH --job-name=yupu-clip-normal
 #SBATCH --partition=gen-part
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G
@@ -18,7 +18,7 @@ module load apptainer
 # Run training
 apptainer exec --nv \
     --bind /scratch/jacobyoo/LiDiff:/scratch/jacobyoo/LiDiff \
-    --bind /scratch/jacobyoo/SemanticKITTI:/scratch/jacobyoo/SemanticKITTI \
+    --bind /nas2/jacob/data/YUPU_data_bin:/nas2/jacob/data/YUPU_data_bin \
     /scratch/jacobyoo/lidiff_v3.sif \
     /usr/local/bin/python3.8-cuda /scratch/jacobyoo/LiDiff/lidiff/train.py \
-    -c /scratch/jacobyoo/LiDiff/lidiff/config/config_HPC.yaml
+    -c /scratch/jacobyoo/LiDiff/lidiff/config/yupu_normal_config.yaml

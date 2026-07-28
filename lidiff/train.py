@@ -11,7 +11,7 @@ import yaml
 import MinkowskiEngine as ME
 
 import lidiff.datasets.datasets as datasets
-import lidiff.models.model_ViT as models
+import lidiff.models.models_clip_normal as models
 
 def set_deterministic():
     np.random.seed(42)
@@ -25,7 +25,7 @@ def set_deterministic():
               '-c',
               type=str,
               help='path to the config file (.yaml)',
-              default=join(dirname(abspath(__file__)),'config/config.yaml'))
+              default=join(dirname(abspath(__file__)),'config/yupu_normal_config.yaml'))
 @click.option('--weights',
               '-w',
               type=str,
