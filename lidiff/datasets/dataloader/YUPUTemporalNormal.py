@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import Dataset
 from lidiff.utils.pcd_preprocess import point_set_to_coord_feats
 from lidiff.utils.collations import point_set_to_sparse_grid_normal, point_set_to_sparse_yupu_normal
+from lidiff.utils.pca_normals import estimate_normals_pca
 from natsort import natsorted
 import os
 import numpy as np
@@ -13,7 +14,9 @@ warnings.filterwarnings('ignore')
 
 class TemporalYUPUNormalSet(Dataset):
     def __init__(self, data_dir, seqs, split, resolution, num_points, max_range,
-                 upsample_ratio=4, dataset_norm=False, std_axis_norm=False, grid=False):
+                 upsample_ratio=4, dataset_norm=False, std_axis_norm=False, grid=False,
+                 synthetic_downsample=False, synthetic_downsample_method='random',
+                 synthetic_normal_k=30):
         super().__init__()
         self.data_dir = data_dir
 
@@ -22,6 +25,15 @@ class TemporalYUPUNormalSet(Dataset):
         self.upsample_ratio = upsample_ratio
         self.max_range = max_range
         self.grid = grid
+        self.synthetic_downsample = bool(synthetic_downsample) and split == 'train'
+        self.synthetic_downsample_method = synthetic_downsample_method
+        self.synthetic_normal_k = int(synthetic_normal_k)
+
+        if self.synthetic_downsample_method != 'random':
+            raise ValueError(
+                f"Unsupported synthetic downsampling method: {self.synthetic_downsample_method}. "
+                "Available methods: random"
+            )
 
         self.split = split
         self.seqs = seqs
@@ -87,6 +99,8 @@ class TemporalYUPUNormalSet(Dataset):
         self.nr_data = len(self.points_datapath)
 
         print('The size of %s data is %d'%(self.split,len(self.points_datapath)))
+        input_source = 'synthetic GT downsampling' if self.synthetic_downsample else 'real sparse scans'
+        print(f'The {self.split} split uses {input_source}')
 
     def datapath_list(self):
         self.points_datapath = []
@@ -107,12 +121,30 @@ class TemporalYUPUNormalSet(Dataset):
                 self.normals_datapath.append(os.path.join(point_seq_path, 'normals', file))
 
     def __getitem__(self, index):
-        # YUPU: partial is already subsampled (~12000), GT is ~48000. No filtering.
-        p_part = np.fromfile(self.points_datapath[index], dtype=np.float32).reshape((-1,4))[:,:3]
         p_full = np.fromfile(self.points_gt_datapath[index], dtype=np.float32).reshape((-1,4))[:,:3]
-        normals = np.fromfile(self.normals_datapath[index], dtype=np.float32).reshape((-1,3))
-
         n_part = int(self.num_points / max(1, int(self.upsample_ratio)))
+
+        if self.synthetic_downsample:
+            if len(p_full) == 0:
+                raise ValueError(f'Cannot downsample empty ground truth: {self.points_gt_datapath[index]}')
+            # First form the exact ground-truth target used by the loss, then
+            # downsample that same target to form the synthetic condition.
+            if len(p_full) != self.num_points:
+                full_idx = np.random.choice(
+                    len(p_full), self.num_points, replace=len(p_full) < self.num_points
+                )
+                p_full = p_full[full_idx]
+            sample_idx = np.random.choice(len(p_full), n_part, replace=len(p_full) < n_part)
+            p_part = p_full[sample_idx]
+            pmin, pmax = p_part.min(axis=0), p_part.max(axis=0)
+            center_xy = (pmin[:2] + pmax[:2]) * 0.5
+            margin = max(0.1 * float(np.linalg.norm(pmax - pmin)), 1.0)
+            camera = np.array([center_xy[0], center_xy[1], pmax[2] + margin], dtype=np.float32)
+            normals = estimate_normals_pca(p_part, k=self.synthetic_normal_k, orient_to_cam=camera)
+        else:
+            # Real sparse YUPU input and its precomputed normals.
+            p_part = np.fromfile(self.points_datapath[index], dtype=np.float32).reshape((-1,4))[:,:3]
+            normals = np.fromfile(self.normals_datapath[index], dtype=np.float32).reshape((-1,3))
 
         if self.grid:
             return point_set_to_sparse_grid_normal(

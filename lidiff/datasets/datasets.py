@@ -446,6 +446,9 @@ class TemporalYUPUNormalDataModule(LightningDataModule):
             num_points=self.cfg['data']['num_points'],
             max_range=self.cfg['data']['max_range'],
             upsample_ratio=self.cfg['data'].get('upsample_ratio', 4),
+            synthetic_downsample=self.cfg['data'].get('synthetic_downsample_train', False),
+            synthetic_downsample_method=self.cfg['data'].get('synthetic_downsample_method', 'random'),
+            synthetic_normal_k=self.cfg['data'].get('synthetic_normal_k', 30),
         )
         loader = DataLoader(data_set, batch_size=self.cfg['train']['batch_size'], shuffle=True,
                             num_workers=self.cfg['train']['num_workers'], collate_fn=collate)
@@ -462,6 +465,9 @@ class TemporalYUPUNormalDataModule(LightningDataModule):
             num_points=self.cfg['data']['num_points'],
             max_range=self.cfg['data']['max_range'],
             upsample_ratio=self.cfg['data'].get('upsample_ratio', 4),
+            synthetic_downsample=self.cfg['data'].get('synthetic_downsample_train', False),
+            synthetic_downsample_method=self.cfg['data'].get('synthetic_downsample_method', 'random'),
+            synthetic_normal_k=self.cfg['data'].get('synthetic_normal_k', 30),
         )
         loader = DataLoader(data_set, batch_size=1,
                             num_workers=self.cfg['train']['num_workers'], collate_fn=collate)
@@ -472,12 +478,15 @@ class TemporalYUPUNormalDataModule(LightningDataModule):
 
         data_set = TemporalYUPUNormalSet(
             data_dir=self.cfg['data']['data_dir'],
-            seqs=self.cfg['data']['validation'],
-            split='validation',
+            seqs=self.cfg['data']['test'],
+            split='test',
             resolution=self.cfg['data']['resolution'],
             num_points=self.cfg['data']['num_points'],
             max_range=self.cfg['data']['max_range'],
             upsample_ratio=self.cfg['data'].get('upsample_ratio', 4),
+            synthetic_downsample=self.cfg['data'].get('synthetic_downsample_train', False),
+            synthetic_downsample_method=self.cfg['data'].get('synthetic_downsample_method', 'random'),
+            synthetic_normal_k=self.cfg['data'].get('synthetic_normal_k', 30),
         )
         loader = DataLoader(data_set, batch_size=self.cfg['train']['batch_size'],
                              num_workers=self.cfg['train']['num_workers'], collate_fn=collate)

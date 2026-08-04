@@ -49,27 +49,6 @@ def main(config, weights, checkpoint, test):
     if weights is None:
         model = models.DiffusionPoints(cfg, config_path=config)
     else:
-        if test:
-            # we load the current config file just to overwrite inference parameters to try different stuff during inference
-            ckpt_cfg = yaml.safe_load(open(weights.split('checkpoints')[0] + '/hparams.yaml'))
-            ckpt_cfg['train']['uncond_min_w'] = cfg['train']['uncond_min_w']
-            ckpt_cfg['train']['uncond_max_w'] = cfg['train']['uncond_max_w']
-            ckpt_cfg['train']['num_workers'] = cfg['train']['num_workers']
-            ckpt_cfg['train']['n_gpus'] = cfg['train']['n_gpus']
-            ckpt_cfg['train']['batch_size'] = cfg['train']['batch_size']
-            ckpt_cfg['data']['num_points'] = cfg['data']['num_points']
-            ckpt_cfg['data']['data_dir'] = cfg['data']['data_dir']
-            ckpt_cfg['diff']['s_steps'] = cfg['diff']['s_steps']
-            ckpt_cfg['experiment']['id'] = cfg['experiment']['id']
-
-            if 'dataset_norm' not in ckpt_cfg['data'].keys():
-                ckpt_cfg['data']['dataset_norm'] = False
-                ckpt_cfg['data']['std_axis_norm'] = False
-            if 'max_range' not in ckpt_cfg['data'].keys():
-                ckpt_cfg['data']['max_range'] = 10.
-
-            cfg = ckpt_cfg
-
         model = models.DiffusionPoints.load_from_checkpoint(weights, hparams=cfg, config_path=config)
         print(model.hparams)
 

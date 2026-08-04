@@ -6,6 +6,7 @@ Prefers SciPy's cKDTree for nearest neighbors, falls back to scikit-learn.
 """
 
 from typing import Optional, Tuple
+from collections import deque
 import warnings
 
 import numpy as np
@@ -119,10 +120,10 @@ def estimate_normals_pca(points: np.ndarray, k: int = 30, orient_to_cam: Optiona
     def bfs(seed: int) -> None:
         if visited[seed]:
             return
-        queue = [seed]
+        queue = deque([seed])
         visited[seed] = True
         while queue:
-            cur = queue.pop(0)
+            cur = queue.popleft()
             n_cur = normals[cur]
             for j in graph_indices[cur]:
                 if j == cur:
@@ -161,5 +162,4 @@ def estimate_normals_pca(points: np.ndarray, k: int = 30, orient_to_cam: Optiona
         normals[~np.isfinite(normals)] = 0.0
 
     return normals.astype(np.float32, copy=False)
-
 
