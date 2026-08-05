@@ -60,7 +60,7 @@ def main(path, voxel_size, max_range, denoising_steps, cond_weight, diff, refine
     for scan_path in tqdm.tqdm(list(natsorted(os.listdir(f'{PATH_DATA}/velodyne')))):
         pcd_pred, cur_scan = get_scan_completion(scan_path, path, diff_completion, max_range, save_reverse_diffusion)
         
-        pcd_file = os.path.join(PATH_DATA, 'velodyne', scan_path)
+        pcd_file = os.path.join(PATH_DATA_GT, 'velodyne', scan_path)
         point_gt = np.fromfile(pcd_file, dtype=np.float32).reshape(-1,4)
         point_gt = point_gt[:,:3]
         pcd_gt = o3d.geometry.PointCloud()

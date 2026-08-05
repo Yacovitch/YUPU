@@ -34,6 +34,22 @@ The experiment checkpoints are written below:
 experiments/yupu_clip_normal_synthetic_downsample/default/version_*/checkpoints/
 ```
 
+Generate the sister evaluation using a random 12,000-point subset of each exact
+48,000-point ground-truth scene:
+
+```bash
+python lidiff/tools/diff_completion_pipeline_clip_normal_synthetic.py \
+  -d /path/to/synthetic-training-checkpoint.ckpt \
+  -r /path/to/refine_net.ckpt \
+  --gt_path /nas2/jacob/data/YUPU_data_bin/dataset/sequences_gt/L_T2_619947_4847977/velodyne \
+  -o results/yupu_synthetic_gt_test/diff \
+  --random_seed 42
+```
+
+The primary `<frame>.ply` filenames remain compatible with
+`eval_path_yupu.py`. Each `<frame>_synthetic_input.ply` records the actual
+12,000-point condition, and `generation_config.yaml` records sampling settings.
+
 ## FLOPs
 
 Profile a trained checkpoint on one real sparse validation sample:
