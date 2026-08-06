@@ -1,98 +1,172 @@
-# Scaling Diffusion Models to Real-World 3D LiDAR Scene Completion
+# YUPU: A Benchmark and Multimodal Diffusion Model for ALS Point Cloud Upsampling
 
-**[Paper](http://www.ipb.uni-bonn.de/pdfs/nunes2024cvpr.pdf)** **|** **[Sup. material](http://www.ipb.uni-bonn.de/pdfs/nunes2024cvpr-supmaterial.pdf)**
+Official repository for our paper accepted at an **ECCV 2026 Workshop**.
 
-This repo contains the code for the scene completion diffusion method proposed in the CVPR'24 paper: "Scaling Diffusion Models to Real-World 3D LiDAR Scene Completion".
+> **Code release:** Coming soon
+> **Dataset release:** Coming soon
 
-Our method leverages diffusion process as a point-wise local problem, disentangling the scene data distribution during in the diffusion process, learning only the point local neighborhood distribution. From our formulation we
-can achieve a complete scene representation from a single LiDAR scan directly operating over the 3D points.
+[Paper](PAPER_URL) | [Project Page](PROJECT_PAGE_URL) | [Dataset](DATASET_URL)
 
-![](pics/diff_steps.png)
+<p align="center">
+  <img src="assets/overview.png" width="900" alt="Overview of YUPU and GCDM">
+</p>
 
-## Dependencies
+## Overview
 
-Installing python packages pre-requisites:
+Airborne laser scanning (ALS) point clouds are valuable for large-scale 3D scene understanding, but collecting dense and complete scans is expensive and operationally demanding. Point-cloud upsampling provides a practical way to reconstruct denser scenes from sparse observations.
 
-`sudo apt install build-essential python3-dev libopenblas-dev`
+Most existing upsampling benchmarks generate sparse inputs by synthetically decimating dense point clouds. However, this process does not fully reproduce the irregular sampling patterns, occlusions, and local density variations found in actual ALS acquisitions.
 
-`pip3 install -r requirements.txt`
+To address this limitation, we introduce:
 
-Installing MinkowskiEngine:
+* **YUPU**, a scene-level ALS point-cloud upsampling benchmark constructed from overlapping physical flight-line acquisitions.
+* **GCDM**, a Geometry-Appearance Conditioned Diffusion Model that combines point coordinates, local surface geometry, and multi-view projection features for point-cloud reconstruction.
 
-`pip3 install -U MinkowskiEngine==0.5.4 --install-option="--blas=openblas" -v --no-deps`
+## News
 
-To setup the code run the following command on the code main directory:
+* **[2026]** The paper was accepted at an ECCV 2026 Workshop.
+* **Code and pretrained models are coming soon.**
+* **YUPU dataset access instructions are coming soon.**
 
-`pip3 install -U -e .`
+## YUPU Dataset
 
-## SemanticKITTI Dataset
+YUPU provides realistic sparse–dense point-cloud pairs created from separately acquired and spatially aligned ALS flight lines.
 
-The SemanticKITTI dataset has to be download from the official [site](http://www.semantic-kitti.org/dataset.html#download) and extracted in the following structure:
+Unlike conventional synthetic benchmarks, the sparse input is not produced solely by randomly decimating its dense reference. Instead:
 
+* A sparse sample is obtained from an individual flight-line acquisition.
+* Its dense reference is constructed by aggregating overlapping physical acquisitions.
+* Training, validation, and test samples are separated geographically to prevent spatial data leakage.
+
+### Dataset characteristics
+
+| Property           | YUPU                                                             |
+| ------------------ | ---------------------------------------------------------------- |
+| Domain             | Airborne laser scanning                                          |
+| Task               | Scene-level point-cloud upsampling                               |
+| Sparse input       | Individual physical acquisition                                  |
+| Dense reference    | Aggregated overlapping acquisitions                              |
+| Upsampling factors | ×2, ×3, and ×4                                                   |
+| Input size         | 12,000 points                                                    |
+| Target sizes       | 24,000, 36,000, and 48,000 points                                |
+| Number of areas    | 13                                                               |
+| Number of samples  | 1,300                                                            |
+| Split strategy     | Region-disjoint                                                  |
+| Scene types        | Buildings, vegetation, roads, plazas, and parking infrastructure |
+
+<p align="center">
+  <img src="assets/dataset_examples.png" width="900" alt="Representative scenes from the YUPU dataset">
+</p>
+
+## Method
+
+Our **Geometry-Appearance Conditioned Diffusion Model (GCDM)** extends diffusion-based point-cloud reconstruction with three complementary conditions:
+
+1. **Point condition**
+   Encodes the spatial structure of the sparse input point cloud.
+
+2. **Geometry condition**
+   Uses surface normals estimated through online PCA-kNN to provide explicit local geometric information.
+
+3. **Projection-based condition**
+   Renders the sparse point cloud from ten virtual viewpoints and extracts contextual features from the resulting projections.
+
+The three conditions are integrated through a lightweight cross-modal attention module and used to guide the diffusion-based reconstruction process.
+
+<p align="center">
+  <img src="assets/method.png" width="900" alt="Architecture of the proposed GCDM">
+</p>
+
+## Quantitative Results
+
+The following results summarize performance on the YUPU ×4 test set.
+
+| Method          |       CD ↓ |   JSD-3D ↓ |      F1 ↑ |      EMD ↓ |
+| --------------- | ---------: | ---------: | --------: | ---------: |
+| PUDM            |     1.2277 |          — |     63.85 |     7.1298 |
+| LiDiff          |     0.6057 |     0.7029 |     72.49 |     3.0006 |
+| **GCDM (Ours)** | **0.4842** | **0.6712** | **84.06** | **2.4721** |
+
+GCDM improves Chamfer Distance, F1 score, and Earth Mover’s Distance over the evaluated diffusion-based baselines, demonstrating the benefit of combining spatial, geometric, and projection-based conditions.
+
+## Qualitative Results
+
+<p align="center">
+  <img src="assets/qualitative_results.png" width="900" alt="Qualitative comparison of point-cloud upsampling methods">
+</p>
+
+From left to right: sparse input, PUDM, LiDiff, GCDM, and dense reference.
+
+## Installation
+
+Installation instructions will be provided with the source-code release.
+
+```bash
+git clone https://github.com/[USERNAME]/[REPOSITORY].git
+cd [REPOSITORY]
 ```
-./lidiff/
-└── Datasets/
-    └── SemanticKITTI
-        └── dataset
-          └── sequences
-            ├── 00/
-            │   ├── velodyne/
-            |   |       ├── 000000.bin
-            |   |       ├── 000001.bin
-            |   |       └── ...
-            │   └── labels/
-            |       ├── 000000.label
-            |       ├── 000001.label
-            |       └── ...
-            ├── 08/ # for validation
-            ├── 11/ # 11-21 for testing
-            └── 21/
-                └── ...
+
+## Dataset Preparation
+
+Dataset download and preprocessing instructions are coming soon.
+
+The planned release will include:
+
+* Training, validation, and test splits
+* Sparse–dense pairs for ×2, ×3, and ×4 upsampling
+* Dataset metadata
+* Preprocessing scripts
+* Evaluation scripts
+
+## Training and Evaluation
+
+Training configurations, pretrained checkpoints, and evaluation commands will be added with the code release.
+
+```bash
+# Training command — coming soon
+python train.py [CONFIGURATION]
+
+# Evaluation command — coming soon
+python test.py [CONFIGURATION] [CHECKPOINT]
 ```
 
-## Ground truth generation
+## Release Checklist
 
-To generate the ground complete scenes you can run the `map_from_scans.py` script. This will use the dataset scans and poses to generate the sequence map to be used as ground truth during training:
-
-```
-python3 map_from_scans.py --path Datasets/SemanticKITTI/dataset/sequences/
-```
-
-Once the sequences map is generated you can then train the model.
-
-## Training the diffusion model
-
-For training the diffusion model, the configurations are defined in `config/config.yaml`, and the training can be started with:
-
-`python3 train.py`
-
-For training the refinement network, the configurations are defined in `config/config_refine.yaml`, and the training can be started with:
-
-`python3 train_refine.py`
-
-## Trained model
-
-You can download the trained model weights and save then to `lidiff/checkpoints/`:
-
-- Diffusion model [weights](https://www.ipb.uni-bonn.de/html/projects/lidiff/diff_net.ckpt)
-- Refinement model [weights](https://www.ipb.uni-bonn.de/html/projects/lidiff/refine_net.ckpt)
-
-## Diffusion Scene Completion Pipeline
-
-For running the scene completion inference we provide a pipeline where both the diffusion and refinement network are loaded and used to complete the scene from an input scan. You can run the pipeline with the command:
-
-`python3 tools/diff_completion_pipeline.py --diff DIFF_CKPT --refine REFINE_CKPT -T DENOISING_STEPS -s CONDITIONING_WEIGHT`
-
-We provide one scan as example in `lidiff/Datasets/test/` so you can directly test it out with our trained model by just running the code above.
+* [ ] YUPU dataset
+* [ ] Dataset preprocessing code
+* [ ] GCDM training code
+* [ ] Evaluation code
+* [ ] Pretrained models
+* [ ] Configuration files
+* [ ] Additional qualitative results
 
 ## Citation
 
-If you use this repo, please cite as :
+If you find this work useful, please consider citing our paper:
 
 ```bibtex
-@inproceedings{nunes2024cvpr,
-    author = {Lucas Nunes and Rodrigo Marcuzzi and Benedikt Mersch and Jens Behley and Cyrill Stachniss},
-    title = {{Scaling Diffusion Models to Real-World 3D LiDAR Scene Completion}},
-    booktitle = {{Proc. of the IEEE/CVF Conf. on Computer Vision and Pattern Recognition (CVPR)}},
-    year = {2024}
+@inproceedings{yoo2026yupu,
+  title     = {YUPU: A Benchmark and Multimodal Diffusion Model for ALS Point Cloud Upsampling},
+  author    = {[Author names]},
+  booktitle = {Proceedings of the European Conference on Computer Vision Workshops},
+  year      = {2026}
 }
+```
+
+The final BibTeX entry will be updated after publication.
+
+## Acknowledgements
+
+Our implementation builds upon ideas and components from prior diffusion-based point-cloud reconstruction methods. We thank the authors of the related open-source projects and the reviewers for their valuable feedback.
+
+## License
+
+The license for the source code and the terms of use for the YUPU dataset will be provided upon release.
+
+## Contact
+
+For questions regarding this project, please contact:
+
+**Sunghwan (Jacob) Yoo**
+York University
+[EMAIL_ADDRESS]
